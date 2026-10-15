@@ -51,6 +51,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` todo
 - [x] Windows: pure Go, no C compiler (`CGO_ENABLED=0`); binary ~3.4 MB
 - [x] macOS/Linux GUI: cgo + system WebKit (`CGO_ENABLED=1`); CLI stays pure Go
 - [x] `build.ps1` (`-H windowsgui -s -w`); `./build.ps1 -Run`
+- [x] **CI** (`.github/workflows/ci.yml`): vet+test+build on Windows/macOS/Linux
+      every push/PR — this also finally verifies ui_unix.go compiles
+- [x] **Release** (`.github/workflows/release.yml`): on a `v*` tag, builds and
+      attaches Windows `.zip`, macOS `.app` zips (arm64+Intel), Linux `.tar.gz`
+      to a GitHub Release — no local cross-compiling, users never build
+- [x] Linux webkit2gtk 4.0→4.1 pkg-config shim (webview_go pins EOL 4.0)
 - [x] Windows dual-mode: `-H windowsgui` + `AttachConsole` (clean GUI, CLI prints)
 - [x] Removed the w64devkit toolchain (no longer needed after the WebView2 pivot)
 

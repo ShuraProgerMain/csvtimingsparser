@@ -1,54 +1,62 @@
 # csvcolor
 
+[![CI](https://github.com/ShuraProgerMain/csvtimingsparser/actions/workflows/ci.yml/badge.svg)](https://github.com/ShuraProgerMain/csvtimingsparser/actions/workflows/ci.yml)
+
 A tiny, portable tool that pulls the **Source In**, **Color**, and **Notes**
 columns out of a CSV and copies the rows for a chosen color to your clipboard —
 from a minimalist drag-and-drop window or from the command line.
 
-On **Windows** it's a **single ~3.4 MB `.exe`** — no installer, no runtime, no
-build step; copy it anywhere and run it. The **CLI runs on Windows, macOS, and
-Linux**. The **GUI runs on all three too**, but macOS/Linux builds are compiled
-from source (they use the system WebKit via cgo) — see
-[Building](#building-from-source).
+It runs on **Windows, macOS, and Linux**. Prebuilt downloads are published for
+every release — **you never build anything.**
 
 ---
 
 ## Contents
-- [Install (just the one file)](#install-just-the-one-file)
+- [Download & run](#download--run)
 - [Use it from any terminal (PATH)](#use-it-from-any-terminal-path)
 - [Using the app (GUI guide)](#using-the-app-gui-guide)
 - [Using the command line (CLI guide)](#using-the-command-line-cli-guide)
 - [Output format](#output-format)
 - [What it accepts in a CSV](#what-it-accepts-in-a-csv)
-- [Building from source (optional)](#building-from-source-optional)
+- [Building from source (contributors)](#building-from-source-contributors)
 - [Project docs](#project-docs)
 
 ---
 
-## Install (just the one file)
+## Download & run
+
+Grab the file for your OS from the **[Releases page][releases]**, unpack it, and
+run it. There's no installer and nothing to compile.
+
+[releases]: https://github.com/ShuraProgerMain/csvtimingsparser/releases/latest
 
 ### Windows
-There is nothing to install. `csvcolor` is one self-contained executable.
+1. Download **`csvcolor-windows-amd64.zip`** and extract `csvcolor.exe`.
+2. Put it wherever you keep small tools (e.g. `C:\Tools\csvcolor\`). Moving it
+   later is fine.
+3. Run it: **double-click** for the GUI, or run `csvcolor ...` in a terminal
+   opened in that folder.
 
-1. Get **`csvcolor.exe`** (it's in this project's `bin\` folder after a build,
-   or whatever folder someone shared it in).
-2. Put it wherever you like to keep small tools, e.g. `C:\Tools\csvcolor\` or a
-   folder in your user profile. That folder is the "install location" — moving
-   the file later is fine.
-3. **Run it:**
-   - **GUI** — double-click `csvcolor.exe`.
-   - **CLI** — open a terminal in that folder and run `csvcolor ...` (or
-     `.\csvcolor.exe ...` in PowerShell).
+Needs the **WebView2** runtime — built into Windows 11 (and installed with Edge
+on Windows 10). A first download may show a SmartScreen prompt (unsigned app):
+**More info → Run anyway**.
 
-Requirements: Windows 10/11. The GUI uses the **WebView2** runtime, which is
-built into Windows 11 (and installed with Edge on Windows 10). Nothing else is
-needed.
+### macOS
+1. Download **`csvcolor-macos-arm64.zip`** (Apple Silicon) or
+   **`csvcolor-macos-amd64.zip`** (Intel) and unzip to get **`CSV Color.app`**.
+2. Move it to Applications (optional). First launch: **right-click → Open** once
+   (Gatekeeper, because the app isn't signed), then **Open**.
+3. For the CLI, the binary is inside the app at
+   `CSV Color.app/Contents/MacOS/csvcolor`.
 
-### macOS / Linux
-Build it once from source (the GUI uses the system WebKit) — see
-[Building from source](#building-from-source) — then run `./csvcolor`. The CLI
-needs no special setup; only the GUI build needs a C compiler / WebKitGTK.
+### Linux
+1. Download **`csvcolor-linux-amd64.tar.gz`** and extract: `tar -xzf csvcolor-linux-amd64.tar.gz`.
+2. Run `./csvcolor` (GUI) or `./csvcolor parse ...` (CLI).
+3. The GUI needs GTK 3 + WebKitGTK and the clipboard needs `xclip`/`xsel`
+   (`wl-copy` on Wayland). On most desktops these are already present; if not,
+   e.g. Debian/Ubuntu: `sudo apt install libwebkit2gtk-4.1-0 xclip`.
 
-> To use it from **any** folder in the terminal — not just where the file is —
+> To run it from **any** folder in the terminal — not just where the file is —
 > see the next section.
 
 ---
@@ -189,21 +197,17 @@ the headers it did find.
 
 ---
 
-## Building from source (optional)
+## Building from source (contributors)
 
-You only need this if you're changing the code. The app is **pure Go** — no C
-compiler required.
+**End users don't need this** — download a prebuilt binary from
+[Releases][releases]. This section is for working on the code. Requires Go 1.27+.
 
-Requires Go 1.27+.
+### Windows
+Pure Go, no C compiler:
 ```powershell
-# from the project folder
 ./build.ps1          # -> bin/csvcolor.exe
 ./build.ps1 -Run     # build, then launch the GUI
-```
-Or directly:
-```powershell
-$env:CGO_ENABLED = "0"
-go build -ldflags "-H windowsgui -s -w" -o bin/csvcolor.exe .
+# or: $env:CGO_ENABLED="0"; go build -ldflags "-H windowsgui -s -w" -o bin/csvcolor.exe .
 ```
 
 ### macOS / Linux
@@ -231,8 +235,17 @@ On macOS/Linux the window keeps the **native OS title bar** (the custom frameles
 title bar is Windows-only); everything else — drag-drop, the color picker, inline
 note editing, copy — works the same.
 
-> Note: these builds are produced on the target OS (or with a matching
-> cross-toolchain). You can't cross-compile the cgo GUI from Windows without one.
+### Releasing (maintainers)
+Releases are built by GitHub Actions — no local cross-compiling. CI
+(`.github/workflows/ci.yml`) builds and tests on Windows, macOS, and Linux on
+every push/PR. To cut a release, push a version tag:
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+`.github/workflows/release.yml` then builds the Windows `.zip`, macOS `.app`
+zips (arm64 + Intel), and the Linux `.tar.gz`, and attaches them to a new
+GitHub Release.
 
 ---
 

@@ -1,0 +1,128 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build (pure Go, no cgo)
+        env:
+          CGO_ENABLED: "0"
+        run: go build -ldflags "-H windowsgui -s -w" -o csvcolor.exe .
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path csvcolor.exe, README.md -DestinationPath "dist/csvcolor-windows-amd64.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-windows
+          path: dist/*
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install GUI deps (+ webkit 4.0 -> 4.1 pkg-config shim)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+          mkdir -p "$HOME/pcshim"
+          cat > "$HOME/pcshim/webkit2gtk-4.0.pc" <<'PC'
+          Name: webkit2gtk-4.0
+          Description: shim redirecting webkit2gtk-4.0 to 4.1
+          Version: 2.44.0
+          Requires: webkit2gtk-4.1
+          PC
+          echo "PKG_CONFIG_PATH=$HOME/pcshim:$PKG_CONFIG_PATH" >> "$GITHUB_ENV"
+      - name: Build
+        env:
+          CGO_ENABLED: "1"
+        run: go build -ldflags "-s -w" -o csvcolor .
+      - name: Package
+        run: |
+          mkdir -p dist
+          tar -czf "dist/csvcolor-linux-amd64.tar.gz" csvcolor README.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-linux
+          path: dist/*
+
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14 # Apple Silicon
+            arch: arm64
+          - runner: macos-13 # Intel
+            arch: amd64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        env:
+          CGO_ENABLED: "1"
+        run: go build -ldflags "-s -w" -o csvcolor .
+      - name: Package .app
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          APP="CSV Color.app"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          cp csvcolor "$APP/Contents/MacOS/csvcolor"
+          chmod +x "$APP/Contents/MacOS/csvcolor"
+          cat > "$APP/Contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key><string>CSV Color</string>
+            <key>CFBundleDisplayName</key><string>CSV Color</string>
+            <key>CFBundleIdentifier</key><string>dev.csvcolor.app</string>
+            <key>CFBundleVersion</key><string>${VERSION}</string>
+            <key>CFBundleShortVersionString</key><string>${VERSION}</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleExecutable</key><string>csvcolor</string>
+            <key>LSMinimumSystemVersion</key><string>10.15</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          PLIST
+          mkdir -p dist
+          ditto -c -k --keepParent "$APP" "dist/csvcolor-macos-${{ matrix.arch }}.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-macos-${{ matrix.arch }}
+          path: dist/*
+
+  release:
+    needs: [windows, linux, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: dist-*
+          merge-multiple: true
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true

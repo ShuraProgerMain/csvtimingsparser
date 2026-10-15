@@ -1,0 +1,5 @@
+# Normalize all text to LF in the repo. Keeps shell scripts in workflow YAML
+# working on Linux/macOS runners and avoids CRLF churn across platforms.
+* text=auto eol=lf
+*.png binary
+*.ico binary
