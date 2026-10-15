@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSV Color</title>
+<style>
+  /* ---- Material 3 tokens ---- */
+  :root {
+    --primary:#4f6bed; --on-primary:#ffffff;
+    --primary-container:#dde1ff; --on-primary-container:#001257;
+    --surface:#fdfbff; --surface-1:#f4f3fb; --surface-2:#ecebf4;
+    --on-surface:#1b1b1f; --on-surface-variant:#45464f;
+    --outline:#c6c6d0; --outline-variant:#e3e2ec;
+    --error:#ba1a1a;
+    --radius-lg:20px; --radius-md:14px; --radius-sm:10px;
+    --shadow-1:0 1px 2px rgba(0,0,0,.14),0 1px 3px rgba(0,0,0,.08);
+    --shadow-2:0 2px 6px rgba(0,0,0,.16),0 1px 2px rgba(0,0,0,.10);
+    --ff:"Segoe UI Variable Text","Segoe UI",Roboto,system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --primary:#b9c3ff; --on-primary:#032078;
+      --primary-container:#2a4291; --on-primary-container:#dde1ff;
+      --surface:#1b1b1f; --surface-1:#232329; --surface-2:#2b2b31;
+      --on-surface:#e4e2e6; --on-surface-variant:#c6c6d0;
+      --outline:#90909a; --outline-variant:#45464f;
+      --error:#ffb4ab;
+      --shadow-1:0 1px 2px rgba(0,0,0,.5); --shadow-2:0 2px 8px rgba(0,0,0,.55);
+    }
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100vh; overflow:hidden; }
+  body {
+    font-family:var(--ff); background:var(--surface); color:var(--on-surface);
+    display:flex; flex-direction:column; -webkit-user-select:none; user-select:none;
+    font-size:14px;
+  }
+
+  /* ---- title bar ---- */
+  .titlebar {
+    height:44px; flex:0 0 44px; display:flex; align-items:center;
+    padding:0 6px 0 16px; gap:10px; background:var(--surface);
+  }
+  .titlebar .drag { flex:1; display:flex; align-items:center; gap:10px; height:100%; }
+  .brand-dot { width:14px; height:14px; border-radius:50%;
+    background:linear-gradient(135deg,var(--primary),#9b6bed); flex:0 0 auto; }
+  .brand { font-weight:600; font-size:13px; letter-spacing:.2px; }
+  .winbtn {
+    width:34px; height:30px; border:none; background:transparent; cursor:pointer;
+    border-radius:8px; color:var(--on-surface-variant); display:grid; place-items:center;
+  }
+  .winbtn:hover { background:var(--surface-2); }
+  .winbtn.close:hover { background:var(--error); color:#fff; }
+  .winbtn svg { width:15px; height:15px; }
+
+  /* ---- content ---- */
+  .content { flex:1; min-height:0; display:flex; flex-direction:column;
+    padding:4px 20px 18px; gap:14px; }
+
+  /* On macOS/Linux the OS draws the window chrome, so hide our custom title bar. */
+  body.decorated .titlebar { display:none; }
+  body.decorated .content { padding-top:18px; }
+
+  /* drop zone */
+  .dropzone {
+    flex:1; min-height:0; border:2px dashed var(--outline);
+    border-radius:var(--radius-lg); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:12px; text-align:center;
+    color:var(--on-surface-variant); cursor:pointer; padding:24px;
+    transition:border-color .15s, background .15s, color .15s;
+  }
+  .dropzone:hover { background:var(--surface-1); }
+  .dropzone.drag {
+    border-color:var(--primary); background:var(--primary-container);
+    color:var(--on-primary-container);
+  }
+  .dropzone .ic { width:48px; height:48px; opacity:.9; }
+  .dropzone h2 { margin:0; font-size:16px; font-weight:600; color:var(--on-surface); }
+  .dropzone p { margin:0; font-size:13px; }
+
+  /* loaded view */
+  .loaded { flex:1; min-height:0; display:none; flex-direction:column; gap:14px; }
+  .filemeta { display:flex; flex-direction:column; gap:2px; }
+  .filemeta .name { font-weight:600; font-size:14px; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; }
+  .filemeta .sub { font-size:12px; color:var(--on-surface-variant); }
+
+  /* field label + custom dropdown */
+  .field { position:relative; }
+  .field > label { font-size:12px; color:var(--on-surface-variant);
+    margin:0 0 6px 4px; display:block; }
+  .select {
+    display:flex; align-items:center; gap:10px; width:100%;
+    background:var(--surface-1); border:1px solid var(--outline);
+    border-radius:var(--radius-sm); padding:12px 14px; cursor:pointer;
+    font:inherit; color:var(--on-surface);
+  }
+  .select:focus-visible { outline:2px solid var(--primary); }
+  .select .caret { margin-left:auto; color:var(--on-surface-variant);
+    transition:transform .18s; }
+  .select.open .caret { transform:rotate(180deg); }
+  .swatch { width:16px; height:16px; border-radius:5px; flex:0 0 auto;
+    border:1px solid rgba(0,0,0,.18); box-shadow:inset 0 0 0 1px rgba(255,255,255,.25); }
+  .menu {
+    position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:20;
+    background:var(--surface); border:1px solid var(--outline-variant);
+    border-radius:var(--radius-md); box-shadow:var(--shadow-2); padding:6px;
+    max-height:220px; overflow:auto; display:none;
+  }
+  .menu.open { display:block; }
+  .menu .opt { display:flex; align-items:center; gap:10px; padding:10px 10px;
+    border-radius:8px; cursor:pointer; }
+  .menu .opt:hover { background:var(--surface-1); }
+  .menu .opt.sel { background:var(--primary-container); color:var(--on-primary-container); }
+
+  /* rows list */
+  .listwrap { flex:1; min-height:0; background:var(--surface-1);
+    border:1px solid var(--outline-variant); border-radius:var(--radius-md);
+    overflow-y:auto; overflow-x:hidden; scrollbar-gutter:stable; }
+
+  /* Material-style thin scrollbar (WebView2 / Chromium) */
+  .listwrap::-webkit-scrollbar,
+  .menu::-webkit-scrollbar { width:12px; height:12px; }
+  .listwrap::-webkit-scrollbar-track,
+  .menu::-webkit-scrollbar-track { background:transparent; }
+  .listwrap::-webkit-scrollbar-thumb,
+  .menu::-webkit-scrollbar-thumb {
+    background:var(--outline); border-radius:999px;
+    border:4px solid transparent; background-clip:padding-box; min-height:32px;
+  }
+  .listwrap:hover::-webkit-scrollbar-thumb,
+  .menu:hover::-webkit-scrollbar-thumb { background:var(--on-surface-variant); background-clip:padding-box; }
+  .listwrap::-webkit-scrollbar-thumb:hover,
+  .menu::-webkit-scrollbar-thumb:hover { background:var(--primary); background-clip:padding-box; }
+  .listwrap::-webkit-scrollbar-corner,
+  .menu::-webkit-scrollbar-corner { background:transparent; }
+  .row { display:flex; align-items:center; gap:12px; padding:11px 14px;
+    border-bottom:1px solid var(--outline-variant); }
+  .row:last-child { border-bottom:none; }
+  .row .tc { font-family:"Cascadia Mono","Consolas",monospace; font-size:12.5px;
+    color:var(--primary); flex:0 0 auto; }
+  .row .nt { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap; border-radius:8px; padding:4px 8px; margin:-4px 0;
+    outline:none; cursor:text; -webkit-user-select:text; user-select:text;
+    transition:background .12s, box-shadow .12s; }
+  .row:hover .nt { background:var(--surface-2); }
+  .row .nt:focus {
+    background:var(--surface); box-shadow:0 0 0 2px var(--primary);
+    white-space:normal; overflow:visible; text-overflow:clip; cursor:text;
+  }
+  .empty-rows { padding:24px; text-align:center; color:var(--on-surface-variant); }
+
+  /* copy button */
+  .copybtn {
+    flex:0 0 auto; border:none; cursor:pointer; font:inherit; font-weight:600;
+    background:var(--primary); color:var(--on-primary); padding:13px;
+    border-radius:999px; box-shadow:var(--shadow-1); display:flex;
+    align-items:center; justify-content:center; gap:8px; transition:filter .15s;
+  }
+  .copybtn:hover { filter:brightness(1.05); }
+  .copybtn:active { filter:brightness(.95); }
+  .copybtn svg { width:18px; height:18px; }
+
+  /* snackbar */
+  .snack {
+    position:fixed; left:50%; bottom:18px; transform:translateX(-50%) translateY(20px);
+    background:#323232; color:#fff; padding:11px 18px; border-radius:10px;
+    font-size:13px; box-shadow:var(--shadow-2); opacity:0; pointer-events:none;
+    transition:opacity .2s, transform .2s; max-width:88%;
+  }
+  .snack.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  .snack.err { background:var(--error); }
+</style>
+</head>
+<body>
+  <div class="titlebar">
+    <div class="drag" id="drag">
+      <span class="brand-dot"></span>
+      <span class="brand">CSV&nbsp;Color</span>
+    </div>
+    <button class="winbtn" id="min" title="Minimize" aria-label="Minimize">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+    <button class="winbtn close" id="close" title="Close" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+    </button>
+  </div>
+
+  <div class="content">
+    <!-- empty / drop state -->
+    <div class="dropzone" id="dropzone">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+        <path d="M12 16V4M12 4l-4 4M12 4l4 4"/>
+        <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+      </svg>
+      <h2>Drop a CSV file here</h2>
+      <p>or click to browse</p>
+      <input type="file" id="file" accept=".csv,text/csv" hidden>
+    </div>
+
+    <!-- loaded state -->
+    <div class="loaded" id="loaded">
+      <div class="filemeta">
+        <span class="name" id="fname"></span>
+        <span class="sub" id="fsub"></span>
+      </div>
+
+      <div class="field">
+        <label>Color</label>
+        <div class="select" id="selbtn" tabindex="0" role="button" aria-haspopup="listbox">
+          <span class="swatch" id="selsw"></span>
+          <span id="sellabel">—</span>
+          <svg class="caret" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="menu" id="menu" role="listbox"></div>
+      </div>
+
+      <div class="listwrap" id="listwrap"></div>
+
+      <button class="copybtn" id="copy">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+        <span id="copylabel">Copy to clipboard</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="snack" id="snack"></div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const state = { colors: [], current: null, fname: "" };
+
+  /* ----- window chrome: custom (frameless, Windows) vs native (mac/linux) ----- */
+  const FRAMELESS = window.CSVCOLOR_FRAMELESS !== false;
+  if (!FRAMELESS) document.body.classList.add("decorated");
+
+  /* ----- window controls (frameless only) ----- */
+  if (FRAMELESS) {
+    $("drag").addEventListener("mousedown", e => { if (e.button === 0) window.hostDrag(); });
+    $("min").addEventListener("click", () => window.hostMinimize());
+    $("close").addEventListener("click", () => window.hostClose());
+  }
+
+  /* ----- color swatch helper ----- */
+  const NAMED = {
+    cream:"#f5e9c8", cyan:"#22c3d6", red:"#e5484d", blue:"#3b82f6", green:"#22a06b",
+    yellow:"#eab308", orange:"#f97316", pink:"#ec4899", purple:"#9333ea",
+    magenta:"#d6409f", teal:"#0d9488", brown:"#8d6e63", chocolate:"#6d4c41",
+    gray:"#9ca3af", grey:"#9ca3af", navy:"#3f51b5", lime:"#84cc16",
+    violet:"#7c3aed", lavender:"#b39ddb", sky:"#38bdf8", mint:"#6ee7b7",
+    forest:"#166534", rose:"#f43f5e", gold:"#d4af37", silver:"#c0c0c0",
+    black:"#333333", white:"#e5e7eb", beige:"#e8dcc0", tan:"#d2b48c"
+  };
+  function colorFor(name) {
+    const k = (name || "").trim().toLowerCase();
+    if (NAMED[k]) return NAMED[k];
+    // deterministic fallback hue from the name
+    let h = 0; for (const c of k) h = (h * 31 + c.charCodeAt(0)) % 360;
+    return `hsl(${h} 55% 55%)`;
+  }
+
+  /* ----- snackbar ----- */
+  let snackTimer;
+  function toast(msg, isErr) {
+    const s = $("snack"); s.textContent = msg;
+    s.classList.toggle("err", !!isErr); s.classList.add("show");
+    clearTimeout(snackTimer); snackTimer = setTimeout(() => s.classList.remove("show"), 1900);
+  }
+
+  /* ----- file loading ----- */
+  const dz = $("dropzone"), fileInput = $("file");
+  dz.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", () => { if (fileInput.files[0]) readFile(fileInput.files[0]); });
+
+  ["dragenter","dragover"].forEach(ev =>
+    document.addEventListener(ev, e => { e.preventDefault(); dz.classList.add("drag"); }));
+  ["dragleave","drop"].forEach(ev =>
+    document.addEventListener(ev, e => { e.preventDefault();
+      if (ev === "drop" || e.target === document.documentElement) dz.classList.remove("drag"); }));
+  document.addEventListener("drop", e => {
+    const f = e.dataTransfer && e.dataTransfer.files[0];
+    if (f) readFile(f);
+  });
+
+  function readFile(file) {
+    state.fname = file.name;
+    const r = new FileReader();
+    r.onload = async () => {
+      const res = await window.hostLoadCSV(String(r.result || ""));
+      if (res.error) { toast(res.error, true); return; }
+      onLoaded(res.colors);
+    };
+    r.onerror = () => toast("Could not read the file", true);
+    r.readAsText(file, "UTF-8");
+  }
+
+  /* ----- render after load ----- */
+  function onLoaded(colors) {
+    state.colors = colors;
+    $("dropzone").style.display = "none";
+    $("loaded").style.display = "flex";
+    $("fname").textContent = state.fname;
+    buildMenu();
+    selectColor(colors[0]);  // default = first color in the file
+  }
+
+  function buildMenu() {
+    const m = $("menu"); m.innerHTML = "";
+    state.colors.forEach(c => {
+      const o = document.createElement("div");
+      o.className = "opt"; o.setAttribute("role", "option");
+      o.innerHTML = `<span class="swatch" style="background:${colorFor(c)}"></span><span></span>`;
+      o.lastChild.textContent = c;
+      o.addEventListener("click", () => { selectColor(c); closeMenu(); });
+      m.appendChild(o);
+    });
+  }
+
+  const selbtn = $("selbtn"), menu = $("menu");
+  function openMenu() { menu.classList.add("open"); selbtn.classList.add("open");
+    [...menu.children].forEach(o => o.classList.toggle("sel", o.lastChild.textContent === state.current)); }
+  function closeMenu() { menu.classList.remove("open"); selbtn.classList.remove("open"); }
+  selbtn.addEventListener("click", () => menu.classList.contains("open") ? closeMenu() : openMenu());
+  selbtn.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openMenu(); } });
+  document.addEventListener("click", e => { if (!$("selbtn").contains(e.target) && !menu.contains(e.target)) closeMenu(); });
+
+  async function selectColor(color) {
+    state.current = color;
+    $("sellabel").textContent = color;
+    $("selsw").style.background = colorFor(color);
+    const data = await window.hostDataFor(color);
+    renderRows(data.rows || []);
+    $("fsub").textContent =
+      `${(data.rows||[]).length} row(s) · ${state.colors.length} color(s) · click a note to edit`;
+  }
+
+  function renderRows(rows) {
+    const w = $("listwrap");
+    if (!rows.length) { w.innerHTML = `<div class="empty-rows">No rows for this color.</div>`; return; }
+    w.innerHTML = "";
+    for (const r of rows) {
+      const el = document.createElement("div");
+      el.className = "row";
+      const tc = document.createElement("span");
+      tc.className = "tc"; tc.textContent = r.sourceIn;
+      const nt = document.createElement("span");
+      nt.className = "nt"; nt.textContent = r.notes; nt.title = r.notes;
+      nt.contentEditable = "true"; nt.spellcheck = false;
+      nt.dataset.idx = r.idx; nt.dataset.orig = r.notes;
+      nt.addEventListener("keydown", onNoteKey);
+      nt.addEventListener("paste", onNotePaste);
+      nt.addEventListener("blur", onNoteCommit);
+      el.appendChild(tc); el.appendChild(nt);
+      w.appendChild(el);
+    }
+  }
+
+  function onNoteKey(e) {
+    if (e.key === "Enter") { e.preventDefault(); e.target.blur(); }
+    else if (e.key === "Escape") { e.target.textContent = e.target.dataset.orig || ""; e.target.blur(); }
+  }
+  function onNotePaste(e) {
+    e.preventDefault();
+    const t = (e.clipboardData || window.clipboardData).getData("text").replace(/\s*\r?\n\s*/g, " ");
+    document.execCommand("insertText", false, t);
+  }
+  async function onNoteCommit(e) {
+    const nt = e.target;
+    const text = nt.textContent.replace(/\s*\r?\n\s*/g, " ").trim();
+    nt.textContent = text; nt.title = text;
+    if (text !== nt.dataset.orig) {
+      await window.hostEditNote(parseInt(nt.dataset.idx, 10), text);
+      nt.dataset.orig = text;
+    }
+  }
+
+  /* ----- copy ----- */
+  $("copy").addEventListener("click", async () => {
+    // Build from the live DOM so any inline note edits are included.
+    const rows = [...$("listwrap").querySelectorAll(".row")];
+    if (!rows.length) return;
+    const text = rows.map(el =>
+      `${el.querySelector(".tc").textContent} - ${el.querySelector(".nt").textContent}`
+    ).join("\n") + "\n";
+    const err = await window.hostCopy(text);
+    if (err) { toast(err, true); return; }
+    toast(`Copied ${rows.length} row(s) for “${state.current}” ✓`);
+  });
+</script>
+</body>
+</html>

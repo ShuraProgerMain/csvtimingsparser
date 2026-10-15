@@ -1,0 +1,9 @@
+# Build output
+/bin/
+
+# Portable toolchain (dev machine only; lives outside the repo at E:\tools\.toolchain)
+/.toolchain/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
