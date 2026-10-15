@@ -104,6 +104,11 @@ jobs:
           </dict>
           </plist>
           PLIST
+          # Ad-hoc sign the whole bundle. Without a bundle signature a
+          # quarantined download is rejected as "damaged"; ad-hoc signing makes
+          # it a normal unsigned app (right-click -> Open once).
+          codesign --force --deep --sign - "$APP"
+          codesign --verify --verbose "$APP"
           mkdir -p dist
           ditto -c -k --keepParent "$APP" "dist/csvcolor-macos-${{ matrix.arch }}.zip"
       - uses: actions/upload-artifact@v4

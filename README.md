@@ -41,13 +41,19 @@ Needs the **WebView2** runtime — built into Windows 11 (and installed with Edg
 on Windows 10). A first download may show a SmartScreen prompt (unsigned app):
 **More info → Run anyway**.
 
-### macOS
-1. Download **`csvcolor-macos-arm64.zip`** (Apple Silicon) and unzip to get
-   **`CSV Color.app`**. _(Intel build coming later — for now, Intel Macs can run
-   it under Rosetta or build from source.)_
-2. Move it to Applications (optional). First launch: **right-click → Open** once
-   (Gatekeeper, because the app isn't signed), then **Open**.
-3. For the CLI, the binary is inside the app at
+### macOS (Apple Silicon)
+1. Download **`csvcolor-macos-arm64.zip`** and unzip to get **`CSV Color.app`**.
+   _(Intel Macs aren't supported by this build yet — an arm64 app can't run on
+   Intel. Build from source until an Intel build is published.)_
+2. Move it to Applications (optional). First launch: **right-click → Open**, then
+   **Open** in the dialog (the app is ad-hoc-signed but not notarized).
+3. If macOS says the app **"is damaged"** (it isn't — that's Gatekeeper on an
+   unsigned download), clear the quarantine flag once:
+   ```bash
+   xattr -dr com.apple.quarantine "/Applications/CSV Color.app"   # adjust the path
+   ```
+   then open it normally.
+4. For the CLI, the binary is inside the app at
    `CSV Color.app/Contents/MacOS/csvcolor`.
 
 ### Linux
