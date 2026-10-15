@@ -42,8 +42,9 @@ on Windows 10). A first download may show a SmartScreen prompt (unsigned app):
 **More info → Run anyway**.
 
 ### macOS
-1. Download **`csvcolor-macos-arm64.zip`** (Apple Silicon) or
-   **`csvcolor-macos-amd64.zip`** (Intel) and unzip to get **`CSV Color.app`**.
+1. Download **`csvcolor-macos-arm64.zip`** (Apple Silicon) and unzip to get
+   **`CSV Color.app`**. _(Intel build coming later — for now, Intel Macs can run
+   it under Rosetta or build from source.)_
 2. Move it to Applications (optional). First launch: **right-click → Open** once
    (Gatekeeper, because the app isn't signed), then **Open**.
 3. For the CLI, the binary is inside the app at
@@ -243,9 +244,9 @@ every push/PR. To cut a release, push a version tag:
 git tag v1.0.0
 git push origin v1.0.0
 ```
-`.github/workflows/release.yml` then builds the Windows `.zip`, macOS `.app`
-zips (arm64 + Intel), and the Linux `.tar.gz`, and attaches them to a new
-GitHub Release.
+`.github/workflows/release.yml` then builds the Windows `.zip`, the macOS `.app`
+zip (Apple Silicon), and the Linux `.tar.gz`, and attaches them to a new GitHub
+Release. (Intel macOS is omitted for now — its runners queue for a long time.)
 
 ---
 
